@@ -1,81 +1,68 @@
+import React, {useEffect, useState} from 'react';
+import Collection from "./Collection";
 import './index.scss';
-import React, {useState} from "react";
 
-const questions = [
-  {
-    title: 'React - это ... ?',
-    variants: ['библиотека', 'фреймворк', 'приложение'],
-    correct: 0,
-  },
-  {
-    title: 'Компонент - это ... ',
-    variants: ['приложение', 'часть приложения или страницы', 'то, что я не знаю что такое'],
-    correct: 1,
-  },
-  {
-    title: 'Что такое JSX?',
-    variants: [
-      'Это простой HTML',
-      'Это функция',
-      'Это тот же HTML, но с возможностью выполнять JS-код',
-    ],
-    correct: 2,
-  },
-];
-
-function Result({correct}) {
-  return (
-    <div className="result">
-      <img src="https://cdn-icons-png.flaticon.com/512/2278/2278992.png" />
-      <h2>Вы отгадали {correct} ответа из {questions.length}</h2>
-        <a href="/">
-            <button>Попробовать снова</button>
-        </a>
-    </div>
-  );
-}
-
-function Game({step, question, onCLickVariant}) {
-    const percentage = Math.round(step/questions.length*100)
-  return (
-    <>
-      <div className="progress">
-        <div style={{ width: `${percentage}%` }} className="progress__inner"></div>
-      </div>
-      <h1>{question.title}</h1>
-      <ul>
-          {
-              question.variants.map((text, index) => (
-                  <li onClick={() => onCLickVariant(index)} key={text}>{text}</li>
-              ))}
-      </ul>
-    </>
-  );
-}
+const cats = [
+    { "name": "Все" },
+    { "name": "Море" },
+    { "name": "Горы" },
+    { "name": "Архитектура" },
+    { "name": "Города" }
+]
 
 function App() {
-    const [step, setStep] = useState(0)
-    const [correct, setCorrect] = useState(0)
-    const question = questions[step]
+    const [categoryId, setCategoryId] = useState(0)
+    const [page, setPage] = useState(1)
+    const [isLoading, setIsLoading] = useState(0)
+    const [searchValue, setSearchValue] = useState('')
+    const [collection, setCollection] = useState([])
 
-    const onCLickVariant = (index) => {
-        console.log(step, index)
-        setStep(step + 1)
+    useEffect(() => {
+        setIsLoading(true)
 
-        if (index === question.correct) {
-            setCorrect(correct + 1)
-        }
-    }
+        const category = categoryId ? `category=${categoryId}` : ''
+
+        fetch(`https://635c2bbafc2595be26422339.mockapi.io/photos?page=${page}&limit=3&${category}`)
+            .then((res) => res.json())
+            .then((json) => {
+                setCollection(json)
+            })
+            .catch(err => {
+                console.warn(err)
+                alert('Something went wrong')
+            }).finally(() => setIsLoading(false))
+    }, [categoryId, page])
 
   return (
     <div className="App">
-        {
-            step !== questions.length ?
-                <Game step={step}
-                      question={question}
-                      onCLickVariant={onCLickVariant}
-                /> : <Result correct={correct}/>
-        }
+      <h1>Моя коллекция фотографий</h1>
+      <div className="top">
+        <ul className="tags">
+            {
+                cats.map((obj, index) => (
+                    <li
+                        onClick={() => setCategoryId(index)}
+                        className={categoryId === index ? 'active' : ''}
+                        key={obj.name}>{obj.name}</li>
+                ))
+            }
+        </ul>
+        <input value={searchValue} onChange={e => setSearchValue(e.target.value)} className="search-input" placeholder="Поиск по названию" />
+      </div>
+      <div className="content">
+          {isLoading ? (<h2>Loading...</h2>) : (
+              collection.filter(obj => {
+              return obj.name.toLowerCase().includes(searchValue.toLowerCase())
+          }).map((obj, index) => (
+              <Collection key={index} name={obj.name} images={obj.photos} />
+          )))
+          }
+      </div>
+      <ul className="pagination">
+          {
+              [...Array(3)].map((_, index) => <li onClick={() => setPage(index + 1)} className={page === index + 1 ? 'active' : ''}>{index + 1}</li>)
+          }
+      </ul>
     </div>
   );
 }
